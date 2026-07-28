@@ -254,6 +254,10 @@ Leg makeNonStandardFixedLeg(const std::vector<Date>& calcDates, const std::vecto
     }
 
     if (notionalDates.empty()) {
+        QL_REQUIRE(notionals.size() <= calcDates.size(),
+                   "makeNonStandardFixedLeg(): notionals ("
+                       << notionals.size() << ") must not exceed calc dates (" << calcDates.size()
+                       << ") if no notional dates are given, since one notional date is derived per notional");
         for (Size i = 1; i < notionals.size(); ++i)
             notionalDates.push_back(calcDates[i]);
     }

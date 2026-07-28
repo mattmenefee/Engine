@@ -66,6 +66,30 @@ BOOST_AUTO_TEST_CASE(testLegDataNotionals) {
     }
 }
 
+BOOST_AUTO_TEST_CASE(testLegDataStrictNotionalDatesExcessNotionals) {
+
+    BOOST_TEST_MESSAGE("Testing LegData StrictNotionalDates with excess notionals...");
+
+    // With StrictNotionalDates and no explicit notional dates, makeNonStandardFixedLeg() derives
+    // one notional date per notional from the calculation dates. More notionals than calculation
+    // dates is therefore not a valid input and must be rejected rather than read out of bounds.
+    // Note this differs from the ordinary leg, where surplus notionals are simply not used.
+
+    ScheduleRules sr("2025-01-01", "2030-01-01", "6M", "TARGET", "F", "F", "Forward");
+    ScheduleData sd(sr);
+    Schedule s = makeSchedule(sd);
+    BOOST_CHECK_EQUAL(s.size(), 11UL);
+
+    vector<double> notionals(2 * (s.size() - 1), 100.0);
+    BOOST_CHECK_GT(notionals.size(), s.size());
+
+    LegData legData(QuantLib::ext::make_shared<FixedLegData>(vector<double>(1, 0.04)), false, "EUR", sd, "30/360",
+                    notionals, vector<string>(), "F");
+    legData.strictNotionalDates() = true;
+
+    BOOST_CHECK_THROW(makeFixedLeg(legData), QuantLib::Error);
+}
+
 BOOST_AUTO_TEST_CASE(testLegDataCashflows) {
 
     BOOST_TEST_MESSAGE("Testing LegData Cashflows...");
