@@ -296,7 +296,7 @@ Leg makeNonStandardFixedLeg(const std::vector<Date>& calcDates, const std::vecto
 
         Date endDate = *std::next(startDate, 1);
 
-        if (endDate >= calcDates.back())
+        if (endDate > calcDates.back())
             continue;
 
         // determine pay date

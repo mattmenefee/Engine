@@ -66,6 +66,48 @@ BOOST_AUTO_TEST_CASE(testLegDataNotionals) {
     }
 }
 
+BOOST_AUTO_TEST_CASE(testLegDataStrictNotionalDatesFinalCoupon) {
+
+    BOOST_TEST_MESSAGE("Testing LegData StrictNotionalDates final coupon...");
+
+    // A notional step in the middle of the first calculation period. With StrictNotionalDates
+    // the leg is built by makeNonStandardFixedLeg(), which splits that period at the step date.
+    // The leg must still cover the whole schedule, i.e. run up to the schedule's end date.
+
+    ScheduleRules sr("2025-01-01", "2030-01-01", "6M", "TARGET", "F", "F", "Forward");
+    ScheduleData sd(sr);
+    Schedule s = makeSchedule(sd);
+    BOOST_CHECK_EQUAL(s.size(), 11UL);
+
+    LegData legData(QuantLib::ext::make_shared<FixedLegData>(vector<double>(1, 0.04)), false, "EUR", sd, "30/360",
+                    {100.0, 50.0}, {"", "2025-04-01"}, "F");
+
+    // Reference behavior without strict notional dates: the step is moved to the next period
+    // start and the leg ends on the schedule's end date.
+    Leg refLeg = makeFixedLeg(legData);
+    BOOST_REQUIRE(!refLeg.empty());
+    BOOST_CHECK_EQUAL(QuantLib::ext::dynamic_pointer_cast<Coupon>(refLeg.back())->accrualEndDate(), s.dates().back());
+
+    legData.strictNotionalDates() = true;
+    Leg leg = makeFixedLeg(legData);
+    BOOST_REQUIRE(!leg.empty());
+
+    // The split at the notional date is what distinguishes the non-standard leg from the leg
+    // above: a semi-annual schedule has no period boundary on 2025-04-01.
+    bool splitAtNotionalDate = false;
+    for (auto const& cf : leg) {
+        auto c = QuantLib::ext::dynamic_pointer_cast<Coupon>(cf);
+        BOOST_REQUIRE(c);
+        if (c->accrualStartDate() == parseDate("2025-04-01"))
+            splitAtNotionalDate = true;
+    }
+    BOOST_CHECK(splitAtNotionalDate);
+
+    // Note the coupon count alone does not detect a missing final coupon here, since the split
+    // above adds one coupon at the front of the leg.
+    BOOST_CHECK_EQUAL(QuantLib::ext::dynamic_pointer_cast<Coupon>(leg.back())->accrualEndDate(), s.dates().back());
+}
+
 BOOST_AUTO_TEST_CASE(testLegDataStrictNotionalDatesExcessNotionals) {
 
     BOOST_TEST_MESSAGE("Testing LegData StrictNotionalDates with excess notionals...");
